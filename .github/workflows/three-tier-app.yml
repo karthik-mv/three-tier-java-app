@@ -1,0 +1,43 @@
+name: Three-Tier-App
+
+on:
+  push: 
+    branches: 
+      - main
+  workflow_dispatch:
+
+
+env:
+  AWS_REGION: ap-south-1
+  ECR_REPOSITORY: three-tier-java-app
+  EKS_CLUSTER_NAME: my-cluster
+  IMAGE_TAG: ${{ github.sha }}
+
+jobs:
+# ============================================================
+  # 1. BUILD + TEST
+  # ============================================================
+
+  build:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout source code
+        uses: actions/checkout@v4
+
+      - name: set up java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+      - name: build application
+        run: |
+          maven clean package -DskipTests=false
+
+      - name: verify war file
+        run: |
+          ls -lh target/
+          find target -name "*,war"
+          
+      
