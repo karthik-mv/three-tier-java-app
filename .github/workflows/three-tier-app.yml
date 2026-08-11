@@ -33,7 +33,7 @@ jobs:
           cache: maven
       - name: build application
         run: |
-          maven clean package -DskipTests=false
+          mvn clean package -DskipTests=false
 
       - name: verify war file
         run: |
