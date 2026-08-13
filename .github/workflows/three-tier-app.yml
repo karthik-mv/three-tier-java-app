@@ -1,26 +1,20 @@
 name: Three-Tier-App
 
-# ============================================================
-# TRIGGERS
-# ============================================================
 on:
   push:
     branches:
       - main
-
   workflow_dispatch:
 
-
 # ============================================================
-# GLOBAL PERMISSIONS
+# GITHUB ACTIONS PERMISSIONS
 # ============================================================
 permissions:
   id-token: write
   contents: read
 
-
 # ============================================================
-# GLOBAL ENVIRONMENT VARIABLES
+# ENVIRONMENT VARIABLES
 # ============================================================
 env:
   AWS_REGION: ap-south-1
@@ -28,10 +22,6 @@ env:
   EKS_CLUSTER_NAME: my-cluster
   IMAGE_TAG: ${{ github.sha }}
 
-
-# ============================================================
-# JOBS
-# ============================================================
 jobs:
 
   # ==========================================================
@@ -43,16 +33,9 @@ jobs:
 
     steps:
 
-      # --------------------------------------------------------
-      # Checkout source code
-      # --------------------------------------------------------
       - name: Checkout source code
         uses: actions/checkout@v4
 
-
-      # --------------------------------------------------------
-      # Setup Java 17
-      # --------------------------------------------------------
       - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
@@ -60,24 +43,16 @@ jobs:
           java-version: '17'
           cache: maven
 
-
-      # --------------------------------------------------------
-      # Build application and run tests
-      # --------------------------------------------------------
       - name: Build application
         run: |
           mvn clean package -DskipTests=false
 
-
-      # --------------------------------------------------------
-      # Verify WAR file
-      # --------------------------------------------------------
       - name: Verify WAR file
         run: |
-          echo "Contents of target directory:"
+          echo "Contents of target:"
           ls -lh target/
 
-          echo "Searching for WAR file:"
+          echo "Searching for WAR:"
           find target -name "*.war"
 
           if ! find target -name "*.war" | grep -q ".war"; then
@@ -87,10 +62,6 @@ jobs:
 
           echo "WAR file generated successfully"
 
-
-      # --------------------------------------------------------
-      # Upload WAR artifact
-      # --------------------------------------------------------
       - name: Upload WAR artifact
         uses: actions/upload-artifact@v4
         with:
@@ -99,7 +70,7 @@ jobs:
 
 
   # ==========================================================
-  # 2. SONARQUBE ANALYSIS
+  # 2. SONARQUBE
   # ==========================================================
   sonarqube:
     name: SonarQube Analysis
@@ -108,18 +79,11 @@ jobs:
 
     steps:
 
-      # --------------------------------------------------------
-      # Checkout source code
-      # --------------------------------------------------------
       - name: Checkout source code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-
-      # --------------------------------------------------------
-      # Setup Java 17
-      # --------------------------------------------------------
       - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
@@ -127,10 +91,6 @@ jobs:
           java-version: '17'
           cache: maven
 
-
-      # --------------------------------------------------------
-      # SonarQube scan
-      # --------------------------------------------------------
       - name: SonarQube Scan
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -158,36 +118,26 @@ jobs:
     steps:
 
       # --------------------------------------------------------
-      # Checkout source code
+      # Checkout
       # --------------------------------------------------------
       - name: Checkout source code
         uses: actions/checkout@v4
 
 
       # --------------------------------------------------------
-      # Debug GitHub context
+      # GitHub context
       # --------------------------------------------------------
-      - name: Debug GitHub context
+      - name: Show GitHub context
         run: |
-          echo "Repository: ${{ github.repository }}"
-          echo "Ref: ${{ github.ref }}"
-          echo "Branch: ${{ github.ref_name }}"
-          echo "Event: ${{ github.event_name }}"
-          echo "Commit SHA: ${{ github.sha }}"
+          echo "Repository : ${{ github.repository }}"
+          echo "Ref        : ${{ github.ref }}"
+          echo "Branch     : ${{ github.ref_name }}"
+          echo "Event      : ${{ github.event_name }}"
+          echo "Commit     : ${{ github.sha }}"
 
 
       # --------------------------------------------------------
-      # DEBUG OIDC TOKEN
-      #
-      # TEMPORARY:
-      # Keep this until AWS OIDC authentication works.
-      # --------------------------------------------------------
-      - name: Debug OIDC token
-        uses: github/actions-oidc-debugger@main
-
-
-      # --------------------------------------------------------
-      # AWS authentication using GitHub OIDC
+      # AWS OIDC authentication
       # --------------------------------------------------------
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v5
@@ -202,6 +152,4 @@ jobs:
       # --------------------------------------------------------
       - name: Verify AWS identity
         run: |
-          echo "AWS identity:"
           aws sts get-caller-identity
-
