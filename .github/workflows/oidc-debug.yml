@@ -1,0 +1,18 @@
+on: workflow_dispatch
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  assume-role-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS credentials (assume role)
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ap-south-1
+
+      - name: Verify AWS identity
+        run: aws sts get-caller-identity --output json
