@@ -135,7 +135,17 @@ jobs:
           echo "Event      : ${{ github.event_name }}"
           echo "Commit     : ${{ github.sha }}"
 
-
+      - name: Check AWS role secret
+        env:
+          AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN1 }}
+        run: |
+          if [ -z "$AWS_ROLE_ARN" ]; then
+            echo "ERROR: AWS_ROLE_ARN1 is empty or unavailable"
+            exit 1
+          fi
+      
+          echo "AWS_ROLE_ARN1 is available"
+          echo "Role name: ${AWS_ROLE_ARN##*/}"
       # --------------------------------------------------------
       # AWS OIDC authentication
       # --------------------------------------------------------
@@ -143,8 +153,10 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v5
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN1 }}
-          aws-region: ${{ env.AWS_REGION }}
-          retry-max-attempts: 1
+          aws-region: ap-south-1
+  
+      - name: Verify AWS identity
+        run: aws sts get-caller-identity
 
 
       # --------------------------------------------------------
