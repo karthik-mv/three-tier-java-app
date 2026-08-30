@@ -10,7 +10,7 @@ metadata:
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}]'
 spec:
   rules:
-    - host: ${APP_DOMAIN}   # placeholder for custom domain
+    - host: qa.example.com     # placeholder ${APP_DOMAIN} for custom domain
       http:
         paths:
           - path: /
