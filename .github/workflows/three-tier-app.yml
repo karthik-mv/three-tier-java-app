@@ -257,7 +257,40 @@ jobs:
           kubectl apply \
             -f k8-manifests/qa/ \
             -n "$K8S_NAMESPACE"
+            - name: Debug deployed image
+          run: |
+          echo "========================================"
+          echo "IMAGE FROM GITHUB ACTIONS"
+          echo "========================================"
+          echo "$IMAGE_URI"
 
+          echo ""
+          echo "========================================"
+          echo "IMAGE IN KUBERNETES"
+          echo "========================================"
+
+          kubectl get deployment three-tier-java-app \
+            -n "$K8S_NAMESPACE" \
+            -o jsonpath='{.spec.template.spec.containers[0].image}'
+
+          echo ""
+
+          echo "========================================"
+          echo "DEPLOYMENT YAML"
+          echo "========================================"
+
+          kubectl get deployment three-tier-java-app \
+            -n "$K8S_NAMESPACE" \
+            -o yaml
+
+          echo ""
+          echo "========================================"
+          echo "POD DESCRIBE"
+          echo "========================================"
+
+          kubectl describe pods \
+            -n "$K8S_NAMESPACE" \
+            -l app=three-tier-java-app
       # --------------------------------------------------------
       # Verify deployment
       # --------------------------------------------------------
