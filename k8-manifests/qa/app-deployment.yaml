@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: three-tier-java-app
-          image: ${IMAGE}   # placeholder for ECR image
+          image: ${IMAGE_URI}   # placeholder for ECR image
           ports:
             - containerPort: 8080
           env:
