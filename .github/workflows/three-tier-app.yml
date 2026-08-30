@@ -359,6 +359,14 @@ jobs:
         run: |
           kubectl get namespace "$K8S_NAMESPACE" || kubectl create namespace "$K8S_NAMESPACE"
 
+    name: Patch manifests
+    run: |
+      IMAGE_URI="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:$IMAGE_TAG"
+      APP_DOMAIN=${{ secrets.APP_DOMAIN }}
+  
+      sed -i "s|\${IMAGE_URI}|$IMAGE_URI|g" k8-manifests/qa/app-deployment.yaml
+      sed -i "s|\${APP_DOMAIN}|$APP_DOMAIN|g" k8-manifests/qa/app-ingress.yaml
+
       # --------------------------------------------------------
       # Deploy
       # --------------------------------------------------------
@@ -377,12 +385,12 @@ jobs:
           kubectl get pods -n "$K8S_NAMESPACE"
           kubectl get services -n "$K8S_NAMESPACE"
 
-    # --------------------------------------------------------
-      # Rollout
       # --------------------------------------------------------
-      - name: Verify rollout
-        run: |
-          kubectl rollout status \
-            deployment/three-tier-java-app \
-            -n "$K8S_NAMESPACE" \
-            --timeout=180s
+        # Rollout
+        # --------------------------------------------------------
+         - name: Verify rollout
+          run: |
+            kubectl rollout status \
+              deployment/three-tier-java-app \
+              -n "$K8S_NAMESPACE" \
+              --timeout=180s
