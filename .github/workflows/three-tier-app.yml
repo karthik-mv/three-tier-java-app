@@ -244,3 +244,84 @@ jobs:
             || echo "No changes to commit"
 
           git push origin qa
+
+   # --------------------------------------------------------
+      # Install kubectl
+      # --------------------------------------------------------
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v4
+
+      
+
+      # --------------------------------------------------------
+      # Install eksctl
+      # --------------------------------------------------------
+
+      - name: Install eksctl
+        run: |
+          curl --silent --location \
+            "https://github.com/eksctl-io/eksctl/releases/latest/download/eksctl_Linux_amd64.tar.gz" \
+            | tar xz -C /tmp
+
+          sudo mv /tmp/eksctl /usr/local/bin/eksctl
+
+          eksctl version
+
+
+      # --------------------------------------------------------
+      # Check whether cluster already exists
+      # --------------------------------------------------------
+
+      - name: Check EKS cluster
+        id: check-cluster
+        run: |
+          if aws eks describe-cluster \
+            --name "$EKS_CLUSTER_NAME" \
+            --region "$AWS_REGION" >/dev/null 2>&1
+          then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "EKS cluster already exists"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "EKS cluster does not exist"
+          fi
+
+
+      # --------------------------------------------------------
+      # Create EKS cluster
+      # --------------------------------------------------------
+
+      - name: Create EKS cluster
+        if: steps.check-cluster.outputs.exists == 'false'
+        run: |
+          eksctl create cluster \
+            --name "$EKS_CLUSTER_NAME" \
+            --region "$AWS_REGION" \
+            --nodegroup-name "$EKS_NODEGROUP_NAME" \
+            --node-type m7i-flex.large \
+            --nodes 1 \
+            --nodes-min 1 \
+            --nodes-max 2 \
+            --managed
+
+
+      # --------------------------------------------------------
+      # Verify EKS cluster
+      # --------------------------------------------------------
+
+      - name: Verify EKS cluster
+        run: |
+          aws eks describe-cluster \
+            --name "$EKS_CLUSTER_NAME" \
+            --region "$AWS_REGION" \
+            --query 'cluster.status' \
+            --output text
+
+      # --------------------------------------------------------
+      # Configure EKS
+      # --------------------------------------------------------
+      - name: Configure kubeconfig
+        run: |
+          aws eks update-kubeconfig \
+            --region "$AWS_REGION" \
+            --name "$EKS_CLUSTER_NAME"
