@@ -248,8 +248,10 @@ jobs:
         run: |
           IMAGE_URI="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:$IMAGE_TAG"
           APP_DOMAIN=${{ secrets.APP_DOMAIN }}
+      
           sed -i "s|\${IMAGE_URI}|$IMAGE_URI|g" k8-manifests/qa/app-deployment.yaml
           sed -i "s|\${APP_DOMAIN}|$APP_DOMAIN|g" k8-manifests/qa/app-ingress.yaml
+
 
 
 
