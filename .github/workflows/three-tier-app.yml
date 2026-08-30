@@ -266,13 +266,14 @@ jobs:
           sudo mv /tmp/eksctl /usr/local/bin/eksctl
 
           eksctl version
+      # --------------------------------------------------------
+      # Configure AWS credentials using static secrets
+      # --------------------------------------------------------
       - name: Configure AWS credentials
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: ap-south-1
         run: |
-          aws sts get-caller-identity
+          aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws configure set region $AWS_REGION
 
       # --------------------------------------------------------
       # Check whether cluster already exists
