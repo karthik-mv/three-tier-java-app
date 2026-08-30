@@ -6,16 +6,10 @@ on:
       - main
   workflow_dispatch:
 
-# ============================================================
-# GITHUB ACTIONS PERMISSIONS
-# ============================================================
 permissions:
   id-token: write
   contents: read
 
-# ============================================================
-# ENVIRONMENT VARIABLES
-# ============================================================
 env:
   AWS_REGION: ap-south-1
   ECR_REPOSITORY: three-tier-java-app
@@ -25,15 +19,10 @@ env:
 
 jobs:
 
-  # ==========================================================
-  # 1. BUILD + TEST
-  # ==========================================================
   build:
     name: Build and Test
     runs-on: ubuntu-latest
-
     steps:
-
       - name: Checkout source code
         uses: actions/checkout@v4
 
@@ -45,22 +34,18 @@ jobs:
           cache: maven
 
       - name: Build application
-        run: |
-          mvn clean package -DskipTests=false
+        run: mvn clean package -DskipTests=false
 
       - name: Verify WAR file
         run: |
           echo "Contents of target:"
           ls -lh target/
-
           echo "Searching for WAR:"
           find target -name "*.war"
-
           if ! find target -name "*.war" | grep -q ".war"; then
             echo "ERROR: WAR file was not generated"
             exit 1
           fi
-
           echo "WAR file generated successfully"
 
       - name: Upload WAR artifact
@@ -69,17 +54,11 @@ jobs:
           name: application-war
           path: target/*.war
 
-
-  # ==========================================================
-  # 2. SONARQUBE
-  # ==========================================================
   sonarqube:
     name: SonarQube Analysis
     runs-on: ubuntu-latest
     needs: build
-
     steps:
-
       - name: Checkout source code
         uses: actions/checkout@v4
         with:
@@ -96,7 +75,6 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-
         run: |
           mvn clean verify sonar:sonar \
             -Dsonar.projectKey=three-tier-java-app \
@@ -104,30 +82,14 @@ jobs:
             -Dsonar.host.url="$SONAR_HOST_URL" \
             -Dsonar.token="$SONAR_TOKEN"
 
-
-  # ==========================================================
-  # 3. DOCKER BUILD + ECR PUSH
-  # ==========================================================
   docker:
     name: Build Docker Image and Push to ECR
     runs-on: ubuntu-latest
-
-    needs:
-      - build
-      - sonarqube
-
+    needs: [build, sonarqube]
     steps:
-
-      # --------------------------------------------------------
-      # Checkout
-      # --------------------------------------------------------
       - name: Checkout source code
         uses: actions/checkout@v4
 
-
-      # --------------------------------------------------------
-      # GitHub context
-      # --------------------------------------------------------
       - name: Show GitHub context
         run: |
           echo "Repository : ${{ github.repository }}"
@@ -141,74 +103,56 @@ jobs:
           AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
         run: |
           if [ -z "$AWS_ROLE_ARN" ]; then
-            echo "ERROR: AWS_ROLE_ARN1 is empty or unavailable"
+            echo "ERROR: AWS_ROLE_ARN is empty or unavailable"
             exit 1
           fi
-      
           echo "AWS_ROLE_ARN is available"
           echo "Role name: ${AWS_ROLE_ARN##*/}"
+
       - name: Check GitHub OIDC environment
         run: |
           echo "ACTIONS_ID_TOKEN_REQUEST_URL: ${ACTIONS_ID_TOKEN_REQUEST_URL:+SET}"
           echo "ACTIONS_ID_TOKEN_REQUEST_TOKEN: ${ACTIONS_ID_TOKEN_REQUEST_TOKEN:+SET}"
-      
-     
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v5
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ap-south-1
-      
+
       - name: Verify AWS identity
         run: aws sts get-caller-identity
 
-      # --------------------------------------------------------
-      # Login to ECR
-      # --------------------------------------------------------
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-  # --------------------------------------------------------
-      # Build Docker image
-      # --------------------------------------------------------
       - name: Build Docker image
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
-          docker build \
-            -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
 
-      # --------------------------------------------------------
-      # Push Docker image
-      # --------------------------------------------------------
       - name: Push Docker image to ECR
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
-          docker push \
-            $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-    
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
       - name: Display image
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
           echo "Image pushed:"
           echo "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
-          
-      # ============================================================
-  # 5. UPDATE QA MANIFEST
-  # ============================================================
+
   update-qa-manifest:
     name: Update QA Kubernetes Manifest
     needs: docker
     runs-on: ubuntu-latest
-
     permissions:
       contents: write
-
     steps:
-
       - name: Checkout QA branch
         uses: actions/checkout@v4
         with:
@@ -218,86 +162,48 @@ jobs:
         env:
           AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
         run: |
-
           IMAGE="$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:$IMAGE_TAG"
-
-          echo "Updating manifest with:"
-          echo "$IMAGE"
-
-          sed -i \
-            "s|image:.*|image: $IMAGE|g" \
-            k8-manifests/qa/app-deployment.yaml
+          echo "Updating manifest with: $IMAGE"
+          sed -i "s|image:.*|image: $IMAGE|g" k8-manifests/qa/app-deployment.yaml
 
       - name: Show updated manifest
-        run: |
-          cat k8-manifests/qa/app-deployment.yaml
+        run: cat k8-manifests/qa/app-deployment.yaml
 
       - name: Commit manifest
         run: |
-
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
           git add k8-manifests/qa/app-deployment.yaml
-
-          git commit \
-            -m "Update QA image to ${IMAGE_TAG} [skip ci]" \
-            || echo "No changes to commit"
-
+          git commit -m "Update QA image to ${IMAGE_TAG} [skip ci]" || echo "No changes to commit"
           git push origin qa
 
-   # --------------------------------------------------------
-      # Install kubectl
-      # --------------------------------------------------------
       - name: Setup kubectl
         uses: azure/setup-kubectl@v4
-
-      
-
-      # --------------------------------------------------------
-      # Install eksctl
-      # --------------------------------------------------------
 
       - name: Install eksctl
         run: |
           curl --silent --location \
             "https://github.com/eksctl-io/eksctl/releases/latest/download/eksctl_Linux_amd64.tar.gz" \
             | tar xz -C /tmp
-
           sudo mv /tmp/eksctl /usr/local/bin/eksctl
-
           eksctl version
-      # --------------------------------------------------------
-      # Configure AWS credentials using static secrets
-      # --------------------------------------------------------
+
       - name: Configure AWS credentials
         run: |
           aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws configure set region $AWS_REGION
 
-      # --------------------------------------------------------
-      # Check whether cluster already exists
-      # --------------------------------------------------------
-
       - name: Check EKS cluster
         id: check-cluster
         run: |
-          if aws eks describe-cluster \
-            --name "$EKS_CLUSTER_NAME" \
-            --region "$AWS_REGION" >/dev/null 2>&1
-          then
+          if aws eks describe-cluster --name "$EKS_CLUSTER_NAME" --region "$AWS_REGION" >/dev/null 2>&1; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
             echo "EKS cluster already exists"
           else
             echo "exists=false" >> "$GITHUB_OUTPUT"
             echo "EKS cluster does not exist"
           fi
-
-
-      # --------------------------------------------------------
-      # Create EKS cluster
-      # --------------------------------------------------------
 
       - name: Create EKS cluster
         if: steps.check-cluster.outputs.exists == 'false'
@@ -312,11 +218,6 @@ jobs:
             --nodes-max 2 \
             --managed
 
-
-      # --------------------------------------------------------
-      # Verify EKS cluster
-      # --------------------------------------------------------
-
       - name: Verify EKS cluster
         run: |
           aws eks describe-cluster \
@@ -325,47 +226,32 @@ jobs:
             --query 'cluster.status' \
             --output text
 
-      # --------------------------------------------------------
-      # Configure EKS
-      # --------------------------------------------------------
       - name: Configure kubeconfig
-        run: |
-          aws eks update-kubeconfig \
-            --region "$AWS_REGION" \
-            --name "$EKS_CLUSTER_NAME"
+        run: aws eks update-kubeconfig --region "$AWS_REGION" --name "$EKS_CLUSTER_NAME"
 
-       # --------------------------------------------------------
-      # Verify Kubernetes access
-      # --------------------------------------------------------
       - name: Verify Kubernetes access
         run: |
           kubectl config current-context
           kubectl get nodes
           kubectl get pods -n "$K8S_NAMESPACE"
 
-      # --------------------------------------------------------
-      # Check permissions
-      # --------------------------------------------------------
       - name: Check Kubernetes permissions
         run: |
           kubectl auth can-i create deployments -n "$K8S_NAMESPACE"
           kubectl auth can-i create services -n "$K8S_NAMESPACE"
           kubectl auth can-i create ingresses.networking.k8s.io -n "$K8S_NAMESPACE"
 
-      # --------------------------------------------------------
-      # Ensure QA namespace exists
-      # --------------------------------------------------------
       - name: Ensure QA namespace exists
-        run: |
-          kubectl get namespace "$K8S_NAMESPACE" || kubectl create namespace "$K8S_NAMESPACE"
+        run: kubectl get namespace "$K8S_NAMESPACE" || kubectl create namespace "$K8S_NAMESPACE"
 
-    name: Patch manifests
-    run: |
-      IMAGE_URI="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:$IMAGE_TAG"
-      APP_DOMAIN=${{ secrets.APP_DOMAIN }}
-  
-      sed -i "s|\${IMAGE_URI}|$IMAGE_URI|g" k8-manifests/qa/app-deployment.yaml
-      sed -i "s|\${APP_DOMAIN}|$APP_DOMAIN|g" k8-manifests/qa/app-ingress.yaml
+      - name: Patch manifests
+        run: |
+          IMAGE_URI="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:$IMAGE_TAG"
+          APP_DOMAIN=${{ secrets.APP_DOMAIN }}
+          sed -i "s|\${IMAGE_URI}|$IMAGE_URI|g" k8-manifests/qa/app-deployment.yaml
+          sed -i "s|\${APP_DOMAIN}|$APP_DOMAIN|g" k8-manifests/qa/app-ingress.yaml
+
+
 
       # --------------------------------------------------------
       # Deploy
@@ -385,12 +271,12 @@ jobs:
           kubectl get pods -n "$K8S_NAMESPACE"
           kubectl get services -n "$K8S_NAMESPACE"
 
-      # --------------------------------------------------------
-        # Rollout
         # --------------------------------------------------------
-         - name: Verify rollout
-          run: |
-            kubectl rollout status \
-              deployment/three-tier-java-app \
-              -n "$K8S_NAMESPACE" \
-              --timeout=180s
+          # Rollout
+          # --------------------------------------------------------
+      - name: Verify rollout
+        run: |
+              kubectl rollout status \
+                deployment/three-tier-java-app \
+                -n "$K8S_NAMESPACE" \
+                --timeout=180s
