@@ -20,6 +20,7 @@ env:
   AWS_REGION: ap-south-1
   ECR_REPOSITORY: three-tier-java-app
   EKS_CLUSTER_NAME: my-cluster
+  K8S_NAMESPACE: qa
   IMAGE_TAG: ${{ github.sha }}
 
 jobs:
