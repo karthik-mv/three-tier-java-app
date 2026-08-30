@@ -1,5 +1,4 @@
 name: Three-Tier-App
-
 on:
   push:
     branches:
