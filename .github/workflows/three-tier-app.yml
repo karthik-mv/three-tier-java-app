@@ -350,3 +350,21 @@ jobs:
           kubectl auth can-i create deployments -n "$K8S_NAMESPACE"
           kubectl auth can-i create services -n "$K8S_NAMESPACE"
           kubectl auth can-i create ingresses.networking.k8s.io -n "$K8S_NAMESPACE"
+
+      # --------------------------------------------------------
+      # Deploy
+      # --------------------------------------------------------
+      - name: Deploy Kubernetes manifests
+        run: |
+          kubectl apply \
+            -f k8-manifests/qa/ \
+            -n "$K8S_NAMESPACE"
+
+      # --------------------------------------------------------
+      # Verify deployment
+      # --------------------------------------------------------
+      - name: Check deployment
+        run: |
+          kubectl get deployments -n "$K8S_NAMESPACE"
+          kubectl get pods -n "$K8S_NAMESPACE"
+          kubectl get services -n "$K8S_NAMESPACE"
