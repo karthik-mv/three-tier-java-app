@@ -332,3 +332,21 @@ jobs:
           aws eks update-kubeconfig \
             --region "$AWS_REGION" \
             --name "$EKS_CLUSTER_NAME"
+
+       # --------------------------------------------------------
+      # Verify Kubernetes access
+      # --------------------------------------------------------
+      - name: Verify Kubernetes access
+        run: |
+          kubectl config current-context
+          kubectl get nodes
+          kubectl get pods -n "$K8S_NAMESPACE"
+
+      # --------------------------------------------------------
+      # Check permissions
+      # --------------------------------------------------------
+      - name: Check Kubernetes permissions
+        run: |
+          kubectl auth can-i create deployments -n "$K8S_NAMESPACE"
+          kubectl auth can-i create services -n "$K8S_NAMESPACE"
+          kubectl auth can-i create ingresses.networking.k8s.io -n "$K8S_NAMESPACE"
