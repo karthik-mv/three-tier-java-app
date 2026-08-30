@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
         - name: three-tier-java-app
-          image: 473488813390.dkr.ecr.ap-south-1.amazonaws.com/three-tier-java-app:PLACEHOLDER
+          image: 473488813390.dkr.ecr.ap-south-1.amazonaws.com/three-tier-java-app:${GITHUB_SHA}
 
           ports:
             - containerPort: 8080
