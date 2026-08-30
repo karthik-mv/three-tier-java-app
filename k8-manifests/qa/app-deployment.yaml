@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: three-tier-java-app
-          image: 473488813390.dkr.ecr.ap-south-1.amazonaws.com/three-tier-java-app:8da0ead3a8c90c730abe38c7268000fa47102b39
+          image: 473488813390.dkr.ecr.ap-south-1.amazonaws.com/three-tier-java-app:cfc7a64be3590f57b4f29b9f257a50430ad979d5
           ports:
             - containerPort: 8080
           env:
