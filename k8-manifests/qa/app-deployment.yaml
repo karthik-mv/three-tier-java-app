@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: three-tier-java-app
-          image: ${IMAGE_URI}   # placeholder for ECR image
+          image: 473488813390.dkr.ecr.ap-south-1.amazonaws.com/three-tier-java-app:8da0ead3a8c90c730abe38c7268000fa47102b39
           ports:
             - containerPort: 8080
           env:
