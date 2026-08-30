@@ -6,7 +6,6 @@ metadata:
 
 spec:
   replicas: 2
-
   selector:
     matchLabels:
       app: three-tier-java-app
@@ -19,23 +18,17 @@ spec:
     spec:
       containers:
         - name: three-tier-java-app
-          image: 473488813390.dkr.ecr.ap-south-1.amazonaws.com/three-tier-java-app:${GITHUB_SHA}
-
+          image: ${IMAGE_URI}   # placeholder for ECR image
           ports:
             - containerPort: 8080
-
           env:
             - name: DB_HOST
               value: postgres
-
             - name: DB_PORT
               value: "5432"
-
             - name: DB_NAME
               value: appdb
-
             - name: DB_USER
               value: appuser
-
             - name: DB_PASSWORD
               value: apppassword
